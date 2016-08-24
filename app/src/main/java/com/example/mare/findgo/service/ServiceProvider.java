@@ -2,8 +2,11 @@ package com.example.mare.findgo.service;
 
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.util.Base64;
 import android.util.Log;
 
 import org.apache.http.params.HttpConnectionParams;
@@ -30,6 +33,9 @@ import org.apache.http.util.EntityUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
+
 public class ServiceProvider {
 
     private static String TAG = "ServiceProvider";
@@ -41,6 +47,8 @@ public class ServiceProvider {
     private static int mTimeoutSocket = 60000;
 
     //private static String mServiceUrl = "http://192.168.0.136:49415/AndroidService.svc/droid";
+
+    private static String mServiceUrl = "http://192.168.0.136:49415/AndroidService.svc/droid";
 
     private ServiceProvider() {
         throw new AssertionError();
@@ -58,6 +66,16 @@ public class ServiceProvider {
 
     private static HttpParams GetMyHttpParameters() {
         HttpParams httpParameters = new BasicHttpParams();
+        // int timeoutConnection = 3000;
+        // int timeoutSocket = 5000;
+        // try {
+        // timeoutConnection = Integer.parseInt(context
+        // .getString(R.string.timeoutConnection));
+        // timeoutSocket = Integer.parseInt(context
+        // .getString(R.string.timeoutSocket));
+        // } finally {
+        // // set default values;
+        // }
         HttpConnectionParams.setConnectionTimeout(httpParameters,
                 mTimeoutConnection);
         HttpConnectionParams.setSoTimeout(httpParameters, mTimeoutSocket);
@@ -166,5 +184,143 @@ public class ServiceProvider {
         String reason = response.getStatusLine().getReasonPhrase();
         throw new Exception("Trouble reading status(code=" + statusCode + "):"
                 + reason);
+    }
+
+    public static String GetNewMessages(Context context, String sellerId,
+                                        String lastMessageId) throws Exception {
+        String secToken = null;
+        String serviceUrl = mServiceUrl + "/administration/newmessages/"
+                + sellerId + "/" + lastMessageId;
+
+        String json = GenericHttpMethod(context, GET_METHOD, serviceUrl,
+                secToken);
+        return json;
+
+    }
+
+    public static int AuthenticateUser(Context context, String username,
+                                       String password) throws Exception {
+        String secToken = null;
+        String serviceUrl = mServiceUrl + "/users/authenticate";
+
+        JSONObject jsonObj = new JSONObject();
+        jsonObj.put("Username", username);
+        jsonObj.put("Password", password);
+
+        String result = GenericHttpMethod(context, POST_METHOD, serviceUrl,
+                secToken, jsonObj.toString());
+        return Integer.parseInt(result);
+    }
+
+    public static boolean ChangeUserPassword(Context context, String username,
+                                             String password, String newPassword)
+            throws Exception {
+        String secToken = null;
+        String serviceUrl = mServiceUrl + "/users/password";
+
+        JSONObject jsonObj = new JSONObject();
+        jsonObj.put("Username", username);
+        jsonObj.put("Password", password);
+        jsonObj.put("NewPassword", newPassword);
+
+        String result = GenericHttpMethod(context, POST_METHOD, serviceUrl,
+                secToken, jsonObj.toString());
+        return Boolean.parseBoolean(result);
+    }
+
+    public static String CheckUsername(Context context, String username) throws Exception {
+        // String secToken = null;
+        String serviceUrl = mServiceUrl + "/products/checkprices";
+
+        HttpClient client = GetMyHttpClient();
+        HttpResponse response = null;
+        HttpPost post = new HttpPost(serviceUrl);
+        JSONObject jsonObj = new JSONObject();
+        jsonObj.put("username", username);
+        post.addHeader("Content-type", "application/json");
+        StringEntity se = new StringEntity(jsonObj.toString(), HTTP.UTF_8);
+        se.setContentEncoding(new BasicHeader(HTTP.CONTENT_TYPE,
+                "application/json"));
+        post.setEntity(se);
+        response = client.execute(post);
+
+        String json = null;
+        if (IsResponseValid(response)) {
+
+            HttpEntity entity = response.getEntity();
+            json = EntityUtils.toString(entity);
+
+        } else {
+            // if (IsTokenExpired(response)) {
+            // throw new TokenExpiredException("Token expired");
+            // // InvalidateToken(context, secToken);
+            // // return GetStatusesStream(context,
+            // // account,userId,pageNo,pageSize,lastStatusId);
+            // } else {
+            HandleUnexpectedHttpError(response);
+            // }
+        }
+        return json;
+    }
+
+    public static String SignInUser(Context applicationContext,
+                                        String username, String password, String name,
+                                        String adress, String birth, String phone, String path)
+            throws Exception {
+        String serviceUrl = mServiceUrl + "/users/new";
+
+        String photoString;
+        photoString = GetBitmapStringFromPath(path);
+
+        HttpClient client = GetMyHttpClient();
+        HttpResponse response = null;
+        HttpPost post = new HttpPost(serviceUrl);
+        JSONObject jsonObj = new JSONObject();
+        jsonObj.put("UserName", username);
+        jsonObj.put("Password", password);
+        jsonObj.put("Name", name);
+        jsonObj.put("Adress", adress);
+        jsonObj.put("BirthDay", birth);
+        jsonObj.put("PhoneNumber", phone);
+        jsonObj.put("Image", photoString);
+
+        // post.addHeader("Authorization", "Bearer " + secToken);
+        post.addHeader("Content-type", "application/json");
+        StringEntity se = new StringEntity(jsonObj.toString(), HTTP.UTF_8);
+        se.setContentEncoding(new BasicHeader(HTTP.CONTENT_TYPE,
+                "application/json"));
+        post.setEntity(se);
+        response = client.execute(post);
+
+        String json = null;
+        if (IsResponseValid(response)) {
+
+            HttpEntity entity = response.getEntity();
+            json = EntityUtils.toString(entity);
+
+        } else {
+            // if (IsTokenExpired(response)) {
+            // throw new TokenExpiredException("Token expired");
+            // // InvalidateToken(context, secToken);
+            // // return GetStatusesStream(context,
+            // // account,userId,pageNo,pageSize,lastStatusId);
+            // } else {
+            HandleUnexpectedHttpError(response);
+            // }
+        }
+        return json;
+    }
+
+    public static String GetBitmapStringFromPath(String path)
+    {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+        Bitmap imageBitmap = BitmapFactory.decodeFile(path, options);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+        byte[] photoByteArr;
+        photoByteArr = baos.toByteArray();
+        String encoded = Base64.encodeToString(photoByteArr, Base64.DEFAULT);
+        return encoded;
     }
 }

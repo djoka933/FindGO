@@ -1,8 +1,12 @@
 package com.example.mare.findgo;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -18,16 +22,23 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.example.mare.findgo.service.ServiceProvider;
+
 public class LogInActivity extends AppCompatActivity {
 
     private UserLoginTask mAuthTask = null;
+    FindGoApp appState;
 
     private String mUsername;
     private String mPassword;
 
     private EditText mUsernameView;
     private EditText mPasswordView;
-    private Button mSignUp;
+    private Button mLogIn;
+
+    private View mLoginFormView;
+    private View mLoginStatusView;
+    private TextView mLoginStatusMessageView;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,9 +46,9 @@ public class LogInActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        mUsernameView = (EditText) findViewById(R.id.username);
+        mUsernameView = (EditText) findViewById(R.id.etLoginUsername);
 
-        mPasswordView = (EditText) findViewById(R.id.pass);
+        mPasswordView = (EditText) findViewById(R.id.etLoginPassword);
         mPasswordView
                 .setOnEditorActionListener(new TextView.OnEditorActionListener() {
                     @Override
@@ -51,12 +62,15 @@ public class LogInActivity extends AppCompatActivity {
                     }
                 });
 
-        mSignUp = (Button) findViewById(R.id.sign_up);
-        mSignUp.setOnClickListener(new View.OnClickListener() {
+        /*mLoginFormView = findViewById(R.id.login_form);
+        mLoginStatusView = findViewById(R.id.login_status);
+        mLoginStatusMessageView = (TextView) findViewById(R.id.login_status_message);*/
+
+        mLogIn = (Button) findViewById(R.id.btnLoginLogin);
+        mLogIn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Context context = LogInActivity.this;
-                context.startActivity(new Intent(context, SignUpActivity.class));
+                attemptLogin();
             }
         });
     }
@@ -118,6 +132,44 @@ public class LogInActivity extends AppCompatActivity {
         }
     }
 
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    private void showProgress(final boolean show) {
+        // On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow
+        // for very easy animations. If available, use these APIs to fade-in
+        // the progress spinner.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            int shortAnimTime = getResources().getInteger(
+                    android.R.integer.config_shortAnimTime);
+
+            /*mLoginStatusView.setVisibility(View.VISIBLE);
+            mLoginStatusView.animate().setDuration(shortAnimTime)
+                    .alpha(show ? 1 : 0)
+                    .setListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            mLoginStatusView.setVisibility(show ? View.VISIBLE
+                                    : View.GONE);
+                        }
+                    });
+
+            mLoginFormView.setVisibility(View.VISIBLE);
+            mLoginFormView.animate().setDuration(shortAnimTime)
+                    .alpha(show ? 0 : 1)
+                    .setListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            mLoginFormView.setVisibility(show ? View.GONE
+                                    : View.VISIBLE);
+                        }
+                    });*/
+        } else {
+            // The ViewPropertyAnimator APIs are not available, so simply show
+            // and hide the relevant UI components.
+            /*mLoginStatusView.setVisibility(show ? View.VISIBLE : View.GONE);
+            mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);*/
+        }
+    }
+
     public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
         String error = null;
 
@@ -126,7 +178,14 @@ public class LogInActivity extends AppCompatActivity {
             // TODO: attempt authentication against a network service.
 
             try {
+                int userId = ServiceProvider.AuthenticateUser(
+                        getApplicationContext(), mUsername, mPassword);
 
+                appState.UserId = userId;
+                appState.Username = mUsername;
+            } catch (InterruptedException e) {
+                error = e.getMessage();
+                return false;
             } catch (Exception e) {
                 error = e.getMessage();
                 e.printStackTrace();
@@ -140,17 +199,27 @@ public class LogInActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(final Boolean success) {
             mAuthTask = null;
+            showProgress(false);
+
             if (success) {
                 Context context = LogInActivity.this;
-                context.startActivity(new Intent(context, MainActivity.class));
+                context.startActivity(new Intent(context, AppActivity.class));
+                finish();
             } else {
-
+                if (error != null) {
+                    mPasswordView.setError(error);
+                } else {
+                    mPasswordView
+                            .setError(getString(R.string.error_incorrect_password));
+                }
+                mPasswordView.requestFocus();
             }
         }
 
         @Override
         protected void onCancelled() {
             mAuthTask = null;
+            showProgress(false);
         }
     }
 }

@@ -7,4 +7,8 @@
     <string name="tvLogin">In order to proceed, please log in:</string>
     <string name="tvRegister">You can register new account here:</string>
     <string name="about">Ovo je neki about tekst.</string>
+    <string name="error_incorrect_password">This password is incorrect</string>
+    <string name="error_creating_file">Error occurred while creating the File.</string>
+    <string name="no_camera_attached">No camera attached!</string>
+    <string name="title_activity_app">AppActivity</string>
 </resources>
