@@ -279,8 +279,8 @@ public class ServiceProvider {
         jsonObj.put("UserName", username);
         jsonObj.put("Password", password);
         jsonObj.put("Name", name);
-        jsonObj.put("Adress", adress);
-        jsonObj.put("BirthDay", birth);
+        //jsonObj.put("Adress", adress);
+        //jsonObj.put("BirthDay", birth);
         jsonObj.put("PhoneNumber", phone);
         jsonObj.put("Image", photoString);
 
